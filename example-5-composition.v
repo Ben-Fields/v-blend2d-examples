@@ -15,8 +15,8 @@ fn main() {
 
 	// First shape filled by a radial gradient.
 	radial := blend2d.new_radial_gradient(180, 180, 180, 180, 180, extend: .pad)
-	radial.add_stop(0.0, blend2d.new_rgba32(0xFFFFFFFF))
-	radial.add_stop(1.0, blend2d.new_rgba32(0xFFFF6F3F))
+	radial.add_stop(0.0, blend2d.rgb_hex(0xFFFFFF))
+	radial.add_stop(1.0, blend2d.rgb_hex(0xFF6F3F))
 
 	ctx.set_comp_op(.src_over)
 	ctx.set_fill_gradient(radial)
@@ -24,8 +24,8 @@ fn main() {
 
 	// Second shape filled by a linear gradient.
 	linear := blend2d.new_linear_gradient(195, 195, 470, 470, extend: .pad)
-	linear.add_stop(0.0, blend2d.new_rgba32(0xFFFFFFFF))
-	linear.add_stop(1.0, blend2d.new_rgba32(0xFF3F9FFF))
+	linear.add_stop(0.0, blend2d.rgb_hex(0xFFFFFF))
+	linear.add_stop(1.0, blend2d.rgb_hex(0x3F9FFF))
 
 	ctx.set_comp_op(.difference)
 	ctx.set_fill_gradient(linear)

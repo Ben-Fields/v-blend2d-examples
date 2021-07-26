@@ -24,7 +24,7 @@ fn main() {
 	// Create font from the font face.
 	font := blend2d.new_font(face, 20.0)
 
-	// ctx.set_fill_color(blend2d.new_rgba32(0xFFFFFFFF))
+	// ctx.set_fill_color(blend2d.new_rgba32(0xFFFFFFF))
 
 	//metrics = font.metrics()
 	//tm TextMetrics
@@ -49,7 +49,7 @@ fn main() {
 	// }
 
 	// TODO
-	ctx.set_fill_color(blend2d.new_rgba32(0xFFFFFFFF))
+	ctx.set_fill_color(blend2d.rgb_hex(0xFFFFFF))
 	ctx.fill_string(20, 80, font, 'Drawing V "Runes" (Blend2D "Glyphs")')
 	ctx.fill_string(20, 100, font, 'not yet implemented.')
 

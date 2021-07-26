@@ -17,9 +17,9 @@ fn main() {
 	linear := blend2d.new_linear_gradient(0, 0, 0, 480)
 
 	// Color stops can be added in any order.
-	linear.add_stop(0.0, blend2d.new_rgba32(0xFFFFFFFF))
-	linear.add_stop(0.5, blend2d.new_rgba32(0xFF5FAFDF))
-	linear.add_stop(1.0, blend2d.new_rgba32(0xFF2F5FDF))
+	linear.add_stop(0.0, blend2d.rgb_hex(0xFFFFFF))
+	linear.add_stop(0.5, blend2d.rgb_hex(0x5FAFDF))
+	linear.add_stop(1.0, blend2d.rgb_hex(0x2F5FDF))
 
 	// Fill and draw a shape.
 	ctx.set_fill_gradient(linear)

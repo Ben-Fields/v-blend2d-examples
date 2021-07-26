@@ -32,7 +32,7 @@ struct App {
 	// the type is important.
 	x_pos   f64
 	// Stopwatch for frame timing
-	timer   time.StopWatch = time.new_stopwatch({})
+	timer   time.StopWatch = time.new_stopwatch()
 	// Delta time: time between current frame and previous frame
 	dt      int
 }
@@ -46,7 +46,7 @@ fn main() {
 	mut app := &App {
 		g: 0
 	}
-	app.g = gg.new_context({
+	app.g = gg.new_context(
 		bg_color: gx.black
 		width: 480
 		height: 480
@@ -56,7 +56,7 @@ fn main() {
 		user_data: app
 		init_fn: init_img
 		frame_fn: frame
-	})
+	)
 	app.g.run()
 
 	println('End main.')
@@ -120,11 +120,11 @@ fn update_img(mut app App) {
 
 	// Draw a circle.
 	ctx.set_comp_op(.src_over)
-	ctx.set_fill_color(blend2d.new_rgba32(0xFF226622))
+	ctx.set_fill_color(blend2d.rgb_hex(0x4CD453))
 	ctx.fill_circle(app.g.width/2 + app.x_pos, app.g.height/2, 150)
 
 	// Draw a frame around the image.
-	ctx.set_stroke_color(blend2d.new_rgba32(0xFF222266))
+	ctx.set_stroke_color(blend2d.rgb_hex(0x222266))
 	ctx.set_stroke_width(3)
 	ctx.stroke_rect(0, 0, app.g.width, app.g.height)
 

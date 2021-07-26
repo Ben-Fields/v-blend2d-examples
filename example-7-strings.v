@@ -25,7 +25,7 @@ fn main() {
 	font := blend2d.new_font(face, 50.0)
 
 	// Draw some strings. (As a reminder, strings in V are encoded as UTF-8).
-	ctx.set_fill_color(blend2d.new_rgba32(0xFFFFFFFF))
+	ctx.set_fill_color(blend2d.rgb_hex(0xFFFFFF))
 	ctx.fill_string(60, 80, font, 'Hello Blend2D!')
 	ctx.rotate_origin(0.785398)
 	ctx.fill_string(250, 80, font, 'Rotated Text')

@@ -20,7 +20,7 @@ fn main() {
 	path.cubic_to(882, 404, 144, 267, 27, 31)
 
 	ctx.set_comp_op(.src_over)
-	ctx.set_fill_style(blend2d.new_rgba32(0xFFFFFFFF))
+	ctx.set_fill_color(blend2d.rgb_hex(0xFFFFFF))
 	ctx.fill_path(path)
 
 	// Detach the rendering context from `img`.

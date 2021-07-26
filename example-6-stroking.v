@@ -15,8 +15,8 @@ fn main() {
 
 	// Apply stroke styling to a path.
 	linear := blend2d.new_linear_gradient(0, 0, 0, 480, extend: .pad)
-	linear.add_stop(0.0, blend2d.new_rgba32(0xFFFFFFFF))
-	linear.add_stop(1.0, blend2d.new_rgba32(0xFF1F7FFF))
+	linear.add_stop(0.0, blend2d.rgb_hex(0xFFFFFF))
+	linear.add_stop(1.0, blend2d.rgb_hex(0x1F7FFF))
 
 	path := blend2d.new_path()
 	path.move_to(119, 49)

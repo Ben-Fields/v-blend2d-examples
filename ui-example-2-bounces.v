@@ -8,8 +8,7 @@ import gx
 const (
 	win_width  = 600
 	win_height = 300
-	start_count = 500
-	limited_frame_time = time.second / 30
+	limited_frame_time = time.second / 120
 )
 
 struct App {
@@ -21,12 +20,11 @@ mut:
 	img     blend2d.Image                // blend2d image data
 	img_buf blend2d.ImageBuffer          // blend2d gg buffer
 	/// State
-	angle f64 // = 0
-	count int = start_count
+	time f64 // = 0
+	count int // = 0
 	/// UI
 	// Widgets
 	limit_fps_check &ui.CheckBox
-	count_slider &ui.Slider
 	canvas &ui.Canvas
 	// FPS
 	fps_sw  time.StopWatch = time.new_stopwatch()
@@ -45,19 +43,6 @@ fn main() {
 			checked: true
 			text_cfg: gx.TextCfg{
 				color: gx.white
-			}
-		)
-		// Slider
-		count_slider: ui.slider(
-			orientation: .horizontal
-			width: 200
-			height: 20
-			min: 100
-			max: 2000
-			val: start_count
-			on_value_changed: fn(mut app &App, slider &ui.Slider) {
-				app.count = int(slider.val)
-				update_title(mut app)
 			}
 		)
 		// Canvas
@@ -87,8 +72,7 @@ fn main() {
 						spacing: 20
 						margin: ui.Margin{0, 10, 0, 10}
 						children: [
-							app.limit_fps_check,
-							app.count_slider
+							app.limit_fps_check
 						]
 					),
 					app.canvas
@@ -136,7 +120,6 @@ fn on_init(window &ui.Window) {
 	app.gg.ui_mode = false
 	// Fix y position of elements
 	app.limit_fps_check.y = 8
-	app.count_slider.y = 5
 }
 
 fn on_render(gg &gg.Context, mut app &App, canvas &ui.Canvas) {
@@ -148,31 +131,65 @@ fn on_render(gg &gg.Context, mut app &App, canvas &ui.Canvas) {
 		ctx.set_fill_color(blend2d.rgb_hex(0x000000))
 		ctx.fill_all()
 
-		p := blend2d.new_path()
+		k_margin_size := f64(7)
+		k_square_size := f64(45)
+		k_full_size := f64(k_square_size + k_margin_size * 2)
+		k_half_size := f64(k_full_size / 2)
+		w := int((app.canvas.width + k_full_size - 1) / k_full_size)
+		h := int((app.canvas.height + k_full_size - 1) / k_full_size)
 
-		count := app.count
-		cx := app.canvas.width / 2
-		cy := app.canvas.height / 2
+		count := w * h
+		app.count = count
 
-		base_angle := app.angle / 180.0 * math.pi
+		mut ix := f64(0)
+		mut iy := f64(0)
+		start := f64(0)
+		now := app.time
+
+		gr := blend2d.new_linear_gradient(0, 0, 0, 0)
+		// TODO - stops not necessary. + func without stops / without type (linear / radial)
+		// From Blend2D API to consider:
+		// gr := blend2d.Gradient{}
+		// gr := blend2d.new_gradient()
+		// gr.set_type(.linear)
 
 		for i in 0..count {
-			t := f64(i) * 1.01 / 1000
-			d := t * 1000 * 0.4 + 10
-			a := base_angle + t * math.pi * 2 * 20
-			x := cx + math.cos(a) * d
-			y := cy + math.sin(a) * d
-			r := math.min(t * 8 + 0.5, 10)
-			p.add_circle(x, y, r)
-		}
+			x := ix * k_full_size
+			y := iy * k_full_size
 
-		ctx.set_fill_color(blend2d.rgb_hex(0xFFFFFF))
-		ctx.fill_path(p)
+			dur := f64((now - start) + (i * 50))
+			pos := f64(math.fmod(dur, 3000.0) / 3000.0)
+			bounce_pos := f64(math.abs(pos * 2 - 1))
+			r := f64((bounce_pos * 50 + 50) / 100)
+			b := f64(((1 - bounce_pos) * 50) / 100)
+
+			rotation := f64(pos * (math.pi * 2))
+			radius := f64(bounce_pos * 25)
+
+			ctx.save()
+			ctx.rotate(rotation, x + k_half_size, y + k_half_size)
+			ctx.translate(x, y)
+
+			gr.reset_stops()
+			gr.add_stop(0, blend2d.rgb_hex(0xFF7F00))
+			gr.add_stop(1, blend2d.rgb(byte(r * 255), 0, byte(b * 255)))
+			gr.set_linear_values(0, k_margin_size, 0, k_margin_size + k_square_size)
+
+			ctx.set_fill_gradient(gr)
+			ctx.fill_round_rect(k_margin_size, k_margin_size, k_square_size, k_square_size, radius)
+			ctx.restore()
+
+			ix += 1
+			if ix >= w {
+				ix = 0
+				iy += 1
+			}
+		}
 
 		// Draw the Blend2D image
 		app.img_buf.draw(app.gg)
 
-		// Animate angle
+		// Animate
 		update_values(mut app)
 	} else {
 		app.img_buf.draw_cached(app.gg)
@@ -181,10 +198,7 @@ fn on_render(gg &gg.Context, mut app &App, canvas &ui.Canvas) {
 
 fn update_values(mut app &App) {
 	// Update display values
-	app.angle += 0.05
-	if app.angle >= 360 {
-		app.angle -= 360
-	}
+	app.time += 2
 	// Update FPS
 	app.fps = f32(1 / app.fps_sw.elapsed().seconds())
 	app.fps_sw.restart()
@@ -197,7 +211,7 @@ fn update_values(mut app &App) {
 }
 
 fn update_title(mut app &App) {
-	title := 'Circles Example [${app.canvas.width}x${app.canvas.height}] [${app.count} circles] [${app.fps:.1f} FPS]'
+	title := 'Bounces Example [${app.canvas.width}x${app.canvas.height}] [${app.count} objects] [${app.fps:.1f} FPS]'
 	if title != app.window.title {
 		app.window.set_title(title)
 	}
