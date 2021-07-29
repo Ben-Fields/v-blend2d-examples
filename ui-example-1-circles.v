@@ -135,8 +135,8 @@ fn on_init(window &ui.Window) {
 	// Continuous refresh (ui auto-enables `gg.ui_mode`, limiting calls to the frame function)
 	app.gg.ui_mode = false
 	// Fix y position of elements
-	app.limit_fps_check.y = 8
-	app.count_slider.y = 5
+	app.limit_fps_check.y = 13
+	app.count_slider.y = 10
 }
 
 fn on_render(gg &gg.Context, mut app &App, canvas &ui.Canvas) {
@@ -206,20 +206,11 @@ fn update_title(mut app &App) {
 [manualfree]
 fn on_resize(w int, h int, window &ui.Window) {
 	mut app := &App(window.state)
-	// Destroy current image
-	app.ctx.free()
-	app.img.free()
-	// Re-init Belnd2D image
-	on_init(window)
+	if (app.canvas.width > 0 && app.canvas.height > 0) && (app.canvas.width != app.img.width() || app.canvas.height != app.img.height()) {
+		// Destroy current image
+		app.ctx.free()
+		app.img.free()
+		// Re-init Belnd2D image
+		on_init(window)
+	}
 }
-
-/// Notes
-// The height of the checkbox cannot be set. Not implemented i v/ui yet.
-// `window` cannot be declared in the initialization of `app` because that causes a 
-//   comptime unhandled exception. Attributes likely not evaluated in order.
-// After the ui functions are called, member variables are not set yet. You must
-//   use the `on_init` function of `window` to use post-initialized values.
-// By default, the canvas `draw_fn()` only draws on a canvas update, so one must call 
-//   `window.refresh()`. To disable this behavior, you must set `gg.Context.ui_mode`
-//   to false. You must then implement frame culling yourself if desired. `ui_mode`
-//   of the gg module does not support partial frame culling.    
