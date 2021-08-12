@@ -6,9 +6,10 @@ import gg
 import gx
 
 const (
-	win_width  = 600
-	win_height = 300
+	win_width  = 800
+	win_height = 500
 	limited_frame_time = time.second / 120
+	renderer_types = [u32(0), 1, 2, 4, 8, 12, 16]
 )
 
 struct App {
@@ -16,14 +17,16 @@ mut:
 	/// Main references
 	window &ui.Window       = voidptr(0) // ui window reference
 	gg     &gg.Context      = voidptr(0) // gg context reference
-	ctx    &blend2d.Context = voidptr(0) // blend2d context reference
 	img     blend2d.Image                // blend2d image data
 	img_buf blend2d.ImageBuffer          // blend2d gg buffer
 	/// State
+	renderer_type u32
 	time f64 // = 0
 	count int // = 0
 	/// UI
 	// Widgets
+	renderer_select &ui.Dropdown
+	label_1 &ui.Label
 	limit_fps_check &ui.CheckBox
 	canvas &ui.Canvas
 	// FPS
@@ -37,7 +40,45 @@ fn main() {
 	/// UI Setup
 	// Create and store widget data
 	mut app := &App{
-		// Check box
+		// Renderer dropdown
+		renderer_select: ui.dropdown(
+			width: 115
+			def_text: 'Blend2D'
+			on_selection_changed: fn (mut app App, dd &ui.Dropdown) {
+				app.renderer_type = renderer_types[dd.selected_index]
+			}
+			items: [
+				ui.DropdownItem{
+					text: 'Blend2D'
+				},
+				ui.DropdownItem{
+					text: 'Blend2D 1T'
+				},
+				ui.DropdownItem{
+					text: 'Blend2D 2T'
+				},
+				ui.DropdownItem{
+					text: 'Blend2D 4T'
+				},
+				ui.DropdownItem{
+					text: 'Blend2D 8T'
+				},
+				ui.DropdownItem{
+					text: 'Blend2D 12T'
+				},
+				ui.DropdownItem{
+					text: 'Blend2D 16T'
+				}
+			]
+		)
+		// Labels
+		label_1: ui.label(
+			text: 'Renderer:'
+			text_cfg: gx.TextCfg{
+				color: gx.white
+			}
+		)
+		// Limit FPS Check Box
 		limit_fps_check: ui.checkbox(
 			text: 'Limit FPS'
 			checked: true
@@ -69,12 +110,14 @@ fn main() {
 					ui.row(
 						widths: ui.compact
 						heights: ui.compact
-						spacing: 20
+						spacing: 10
 						margin: ui.Margin{0, 10, 0, 10}
 						children: [
+							app.label_1
+							app.renderer_select
 							app.limit_fps_check
 						]
-					),
+					)
 					app.canvas
 				]
 			)
@@ -100,14 +143,6 @@ fn on_init(window &ui.Window) {
 		println("Error: Could not create Blend2D image. $err")
 		exit(1)
 	}
-	// Attach a rendering context into `img`.
-	app.ctx = blend2d.new_context(app.img) or {
-		println("Error: Could not create Blend2D context. $err")
-		exit(1)
-	}
-	// Set matrix to account for DPI scaling.
-	app.ctx.scale(app.gg.scale)
-	app.ctx.user_to_meta()
 	// Init Blend2D image buffer; draw at canvas position
 	app.img_buf = blend2d.new_image_buffer(app.img)
 	app.img_buf.x = app.canvas.x
@@ -119,15 +154,24 @@ fn on_init(window &ui.Window) {
 	// Continuous refresh (ui auto-enables `gg.ui_mode`, limiting calls to the frame function)
 	app.gg.ui_mode = false
 	// Fix y position of elements
-	app.limit_fps_check.y = 13
+	app.label_1.y = 15
+	app.renderer_select.y = 10
+	app.limit_fps_check.y = 15
 }
 
 fn on_render(gg &gg.Context, mut app &App, canvas &ui.Canvas) {
 	// Limit frame rate if user desires
 	if !app.limit_fps_check.checked || app.fps_sw.elapsed() >= limited_frame_time {
-		// Update the Blend2D iamge
-		ctx := app.ctx
+		// Attach a rendering context to `img`.
+		ctx := blend2d.new_context(app.img, thread_count: app.renderer_type) or {
+			println("Error: Could not create Blend2D context. $err")
+			exit(1)
+		}
+		// Set matrix to account for DPI scaling.
+		ctx.scale(app.gg.scale)
+		ctx.user_to_meta()
 
+		// Update the Blend2D image
 		ctx.set_fill_color(blend2d.rgb_hex(0x000000))
 		ctx.fill_all()
 
@@ -191,6 +235,11 @@ fn on_render(gg &gg.Context, mut app &App, canvas &ui.Canvas) {
 
 		// Animate
 		update_values(mut app)
+
+		// TEMPORARY: Normally, autofree would put this here, but it is not finished.
+		ctx.free()
+
+		// free() syncs the threads and detaches the rendering context (in addition to freeing the ctx data).
 	} else {
 		app.img_buf.draw_cached(app.gg)
 	}
@@ -222,9 +271,8 @@ fn on_resize(w int, h int, window &ui.Window) {
 	mut app := &App(window.state)
 	if (app.canvas.width > 0 && app.canvas.height > 0) && (app.canvas.width != app.img.width() || app.canvas.height != app.img.height()) {
 		// Destroy current image
-		app.ctx.free()
 		app.img.free()
-		// Re-init Belnd2D image
+		// Re-init Blend2D image
 		on_init(window)
 	}
 }

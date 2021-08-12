@@ -6,8 +6,9 @@ import gx
 import rand
 
 const (
-	win_width  = 600
-	win_height = 300
+	win_width  = 800
+	win_height = 500
+	renderer_types = [u32(0), 1, 2, 4, 8, 12, 16]
 )
 
 struct App {
@@ -15,10 +16,10 @@ mut:
 	/// Main references
 	window &ui.Window       = voidptr(0) // ui window reference
 	gg     &gg.Context      = voidptr(0) // gg context reference
-	ctx    &blend2d.Context = voidptr(0) // blend2d context reference
 	img     blend2d.Image                // blend2d image data
 	img_buf blend2d.ImageBuffer          // blend2d gg buffer
 	/// State
+	renderer_type u32
 	// TODO: Debug- program crashes b/c out of memory access when ampersand (&) omitted
 	//       (field becomes invalid even though it is initialized)
 	//       (maybe an issue with C interop / opaque structs)
@@ -33,8 +34,8 @@ mut:
 	gradient_type blend2d.GradientType = .linear
 	gradient_extend_mode blend2d.ExtendMode = .pad
 	num_points u32 = 2
-	closest_vertex u32
-	grabbed_vertex u32
+	closest_vertex u32 = math.max_u32
+	grabbed_vertex u32 = math.max_u32
 	grabbed_x int
 	grabbed_y int
 	/// UI
@@ -44,6 +45,7 @@ mut:
 	parameter_slider &ui.Slider
 	label_1 &ui.Label
 	label_2 &ui.Label
+	label_3 &ui.Label
 	color_button &ui.Button
 	randomize_button &ui.Button
 	canvas &ui.Canvas
@@ -121,6 +123,12 @@ fn main() {
 				color: gx.white
 			}
 		)
+		label_3: ui.label(
+			text: 'Radius:'
+			text_cfg: gx.TextCfg{
+				color: gx.white
+			}
+		)
 		// Buttons
 		color_button: ui.button(
 			text: 'Colors'
@@ -165,8 +173,6 @@ fn main() {
 		on_init: on_init
 		on_resize: on_resize
 		bg_color: gx.rgb(20, 20, 20)
-		// TODO - PR
-		// Commented out in `ui` module for some reason
 		on_mouse_down: on_mouse_press
 		on_mouse_up: on_mouse_release
 		on_mouse_move: on_mouse_move
@@ -186,18 +192,19 @@ fn main() {
 							app.label_2
 							app.extend_mode_select
 						]
-					),
+					)
 					ui.row(
 						widths: ui.compact
 						heights: ui.compact
-						spacing: 20
+						spacing: 10
 						margin: ui.Margin{0, 10, 0, 10}
 						children: [
-							app.parameter_slider
 							app.color_button
 							app.randomize_button
+							app.label_3
+							app.parameter_slider
 						]
-					),
+					)
 					app.canvas
 				]
 			)
@@ -223,14 +230,6 @@ fn on_init(window &ui.Window) {
 		println("Error: Could not create Blend2D image. $err")
 		exit(1)
 	}
-	// Attach a rendering context into `img`.
-	app.ctx = blend2d.new_context(app.img) or {
-		println("Error: Could not create Blend2D context. $err")
-		exit(1)
-	}
-	// Set matrix to account for DPI scaling.
-	app.ctx.scale(app.gg.scale)
-	app.ctx.user_to_meta()
 	// Init Blend2D image buffer; draw at canvas position
 	app.img_buf = blend2d.new_image_buffer(app.img)
 	app.img_buf.x = app.canvas.x
@@ -240,20 +239,29 @@ fn on_init(window &ui.Window) {
 	// Continuous refresh (ui auto-enables `gg.ui_mode`, limiting calls to the frame function)
 	app.gg.ui_mode = false
 	// Fix y position of elements
-	app.gradient_type_select.y = 10
-	app.extend_mode_select.y = 10
 	app.label_1.y = 15
+	app.gradient_type_select.y = 10
 	app.label_2.y = 15
-	app.parameter_slider.y = 52
+	app.extend_mode_select.y = 10
 	app.color_button.y = 50
 	app.randomize_button.y = 50
+	app.label_3.y = 55
+	app.parameter_slider.y = 52
 }
 
 fn on_render(gg &gg.Context, mut app &App, canvas &ui.Canvas) {
 	// Canvas updates are on request
 	if app.update_canvas {
-		// Update the Blend2D iamge
-		ctx := app.ctx
+		// Attach a rendering context to `img`.
+		ctx := blend2d.new_context(app.img, thread_count: 0) or {
+			println("Error: Could not create Blend2D context. $err")
+			exit(1)
+		}
+		// Set matrix to account for DPI scaling.
+		ctx.scale(app.gg.scale)
+		ctx.user_to_meta()
+
+		// Update the Blend2D image
 		grad := app.gradient
 
 		grad.set_type(app.gradient_type)
@@ -279,6 +287,11 @@ fn on_render(gg &gg.Context, mut app &App, canvas &ui.Canvas) {
 		app.img_buf.draw(app.gg)
 
 		app.update_canvas = false
+
+		// TEMPORARY: Normally, autofree would put this here, but it is not finished.
+		ctx.free()
+
+		// free() syncs the threads and detaches the rendering context (in addition to freeing the ctx data).
 	} else {
 		app.img_buf.draw_cached(app.gg)
 	}
@@ -337,9 +350,8 @@ fn on_resize(w int, h int, window &ui.Window) {
 	mut app := &App(window.state)
 	if (app.canvas.width > 0 && app.canvas.height > 0) && (app.canvas.width != app.img.width() || app.canvas.height != app.img.height()) {
 		// Destroy current image
-		app.ctx.free()
 		app.img.free()
-		// Re-init Belnd2D image
+		// Re-init Blend2D image
 		on_init(window)
 		app.update_canvas = true
 	}
